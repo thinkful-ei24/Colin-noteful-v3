@@ -3,6 +3,7 @@
 const express = require('express');
 const Note = require('../models/note.js');
 const router = express.Router();
+const mongoose = require('mongoose');
 
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
@@ -25,17 +26,29 @@ router.get('/', (req, res, next) => {
 router.get('/:id', (req, res, next) => {
 
   let id = req.params.id;
+
+  //test for valid id
+  if(!mongoose.Types.ObjectId.isValid(id)) {
+    const err = new Error('not a valid note ID');
+    err.status = 400;
+    return next(err);
+  }
+
+
+
   Note.findById(id)
     .then((results) => {
       res.json(results);
     })
-    .catch(err => next(err));
+    .catch(err =>  {
+      next(err);
+    });
 });
 
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
   const { title, content } = req.body;
-
+  console.log(title);
   if(!title) {
     const err = new Error('Missing `title` in request body');
     err.status = 400;
@@ -49,7 +62,7 @@ router.post('/', (req, res, next) => {
 
   Note.create(newItem)
     .then( result => {
-      res.location(`${req.originalUrl}/${result.id}`).json(result);
+      res.location(`${req.originalUrl}/${result.id}`).status(201).json(result);
     })
     .catch(err => next(err));
   //console.log('Create a Note');
