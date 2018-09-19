@@ -38,7 +38,7 @@ router.get('/:id', (req, res, next) => {
 
   Note.findById(id)
     .then((results) => {
-      res.json(results);
+       res.json(results);
     })
     .catch(err =>  {
       next(err);

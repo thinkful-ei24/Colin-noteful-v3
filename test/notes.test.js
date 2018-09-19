@@ -131,4 +131,66 @@ describe('Notes API resource', function () {
         });
     });
   });
+
+  describe('PUT /api/notes', function () {
+    it('updates an item in the database', function () {
+
+      const updateNote = {title: 'I\'m an updated note', content: 'look how updated I am'};
+      let res;
+      let og_id;
+
+      return Note.findOne()
+        .then(foundNote => {
+          og_id = foundNote.id;
+          return chai.request(app)
+            .put(`/api/notes/${og_id}`)
+            .send(updateNote);
+        })
+        .then(_res => {
+          res = _res;
+          expect(res).to.be.json;
+          expect(res).to.have.status(200);
+          expect(res.body).to.be.an('object');
+          expect(res.body).to.have.keys('id', 'title', 'content', 'createdAt', 'updatedAt');
+          return Note.findById(res.body.id);
+        })
+        .then(dbNote => {
+          expect(res.body.id).to.equal(dbNote.id);
+          expect(dbNote.id).to.equal(og_id);
+          expect(res.body.title).to.equal(dbNote.title);
+          expect(dbNote.title).to.equal(updateNote.title);
+          expect(res.body.content).to.equal(dbNote.content);
+          expect(dbNote.content).to.equal(updateNote.content);
+          expect(new Date(res.body.updatedAt)).to.eql(dbNote.updatedAt);
+        });
+    });
+
+    it('status 404 when an item is updated with invalid data', function () {
+
+      const updateNote = {'content': 'content without a title'};
+      let res;
+
+      return chai.request(app)
+        .put('/api/notes')
+        .send(updateNote)
+        .then(function (_res) {
+          res = _res;
+          expect(res).to.have.status(404);
+          expect(res).to.be.json;
+        });
+    });
+  });
+
+  describe('DELETE an item', function () {
+    it('successfully removes an item from the database', function () {
+      return Note.findOne()
+        .then(res => {
+          return chai.request(app)
+            .delete(`/api/notes/${res.id}`);
+        })
+        .then((res) => {
+          expect(res).to.have.status(204);
+        });
+    });
+  });
 });
