@@ -2,8 +2,11 @@ const mongoose = require('mongoose');
 
 const noteSchema = new mongoose.Schema({
   title: { type: String, required: true },
-  content: String
+  content: String,
+  folderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder' }
 });
+
+//set virtual properties beneath schema.  *make sure to include `mySchema.set('tooObject'), {viretuals: true}`
 
 // Add `createdAt` and `updatedAt` fields
 noteSchema.set('timestamps', true);
