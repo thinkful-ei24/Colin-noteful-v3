@@ -1,2 +1,9 @@
 language: node_js
 node_js: node
+deploy:
+  provider: heroku
+  api_key:
+    secure: gC28Il38ESvmO2KAAO8TYlHZkDN/PYDBA32Bbc/n6u01mYZrEsqRGOa+/w7mEbZQ8/P9s/N7gEwUqUC+GoEsMunPtGGV3jrVmdXIaGyAewANZwjshL9YO/AO2LdJyOM88fLIRvySGOHEkKkWfyXsDIExzMDGZ4cAXCqRTAkRFxtsQMJiu3HyNmUzbPzrdZWUDByU3aWifs01QHWthmVn/mNu0HfwI5di/A4BgpDAi5G4BE1Gxu45xqe9j2tfsYEovlMC6gmEs0q0T++siqO0XHnPYWWKtAmDTWDwyl3qxul1H9BfpZKC39fKFtWpHSJRiH84GBxcTC69SiQgZqjjL/An2O6/xEui97ZoEUwqpV8LrrtczLNS847FqQSBQPLNAA7HZwuWE4qmEHOIDU3A5iXBZjg92LYFnGqqA7LJEjBtjp2c9nkaT7KRNPpWUCjBxK+8oeTJF6RiMEMs3FM7XgJWGpIP1H6f3klInalUzXKj02qd69wZL1Xzv8liBpQraiu5HuzHyf4N/5MgstPMh9kIFZM9DCVXgpB6PLOXc+zhz9JVhum08TIZPBHe4xg4d7mdjlafzC4C9L6F6vXLFdYA1GIrxXLfKT/xE9c9xbZTuxxixTRS5tAuGwO9hwz/fDO3aEWGsYwplNktxd6SDtJU+RpjBnu5npgPTCfu4iY=
+  app: noteful-v3-colin
+  on:
+    repo: thinkful-ei24/Colin-noteful-v3
