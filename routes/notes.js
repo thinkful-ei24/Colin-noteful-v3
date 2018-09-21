@@ -59,17 +59,6 @@ router.get('/:id', (req, res, next) => {
     .catch(err => {
       next(err);
     });
-
-
-
-  //  this is my solution.  Above is the copied-from-answer-key solution
-  //  Note.findById(id)
-  //    .then((results) => {
-  //       res.json(results);
-  //    })
-  //    .catch(err =>  {
-  //      next(err);
-  //    });
 });
 
 /* ========== POST/CREATE AN ITEM ========== */
@@ -85,7 +74,7 @@ router.post('/', (req, res, next) => {
 
   if(tags) {
     tags.forEach(tag => {
-      if (!mongoose.Types.ObjectId.isValid) {
+      if (!mongoose.Types.ObjectId.isValid(tag.id)) {
         const err = 'Not a valid `id`';
         err.status = 400;
         return next(err);
@@ -112,18 +101,14 @@ router.post('/', (req, res, next) => {
 
 /* ========== PUT/UPDATE A SINGLE ITEM ========== */
 router.put('/:id', (req, res, next) => {
-  if(!(req.params.id && req.body.id && req.params.id === req.body.id)) {
-    const message = `Request path id ${req.params.id} and ${req.body.id} must match`;
-    console.error(message);
-  }
 
   const id = req.params.id;
   const toUpdate = {};
   const updateFields = ['title', 'content', 'folderId', 'tags'];
 
-  if (!mongoose.Types.ObjectId.isValid) {
-    const err = 'Not a valid `id`';
-    err.status = 400;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const err = new Error('Not a valid `id`');
+    err.status = 404;
     return next(err);
   }
 
@@ -135,17 +120,27 @@ router.put('/:id', (req, res, next) => {
 
   if(toUpdate.tags !== undefined) {
     toUpdate.tags.forEach(tag => {
-      if (!mongoose.Types.ObjectId.isValid) {
-        const err = 'Not a valid `id`';
+      if (!mongoose.Types.ObjectId.isValid(tag.id)) {
+        const err = new Error('Not a valid `id`');
         err.status = 400;
         return next(err);
       }
     });
   }
 
+  if (!toUpdate.title) {
+    const message = new Error('Missing `title` in request body');
+    message.status = 400;
+    return next(message);
+  }
+
   Note.findByIdAndUpdate(id, toUpdate, {new: true})
     .then(result => {
-      res.json(result);
+      if(result) {
+        res.json(result);
+      } else {
+        next();
+      }
     })
     .catch(err => next(err));
 
