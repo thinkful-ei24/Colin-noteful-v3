@@ -43,7 +43,7 @@ describe('Notes API resource', function () {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
           expect(res.body).to.be.an('object');
-          expect(res.body).to.have.keys('id', 'title', 'content', 'createdAt', 'updatedAt');
+          expect(res.body).to.have.keys('id', 'title', 'content', 'createdAt', 'updatedAt', 'tags', 'folderId');
 
           expect(res.body.id).to.equal(note.id);
           expect(res.body.title).to.equal(note.title);
@@ -106,7 +106,7 @@ describe('Notes API resource', function () {
           expect(res).to.have.header('location');
           expect(res).to.be.json;
           expect(res.body).to.be.an('object');
-          expect(res.body).to.have.keys('id', 'title', 'content', 'updatedAt', 'createdAt');
+          expect(res.body).to.have.keys('id', 'title', 'content', 'updatedAt', 'createdAt', 'tags');
           return Note.findById(res.body.id);
         })
         .then(function(note) {
@@ -151,7 +151,7 @@ describe('Notes API resource', function () {
           expect(res).to.be.json;
           expect(res).to.have.status(200);
           expect(res.body).to.be.an('object');
-          expect(res.body).to.have.keys('id', 'title', 'content', 'createdAt', 'updatedAt');
+          expect(res.body).to.have.keys('id', 'title', 'content', 'createdAt', 'updatedAt', 'folderId', 'tags');
           return Note.findById(res.body.id);
         })
         .then(dbNote => {
