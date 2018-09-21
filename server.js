@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const { PORT, MONGODB_URI } = require('./config');
 
 const notesRouter = require('./routes/notes');
+const tagsRouter = require('./routes/tags');
 const foldersRouter = require('./routes/folders');
 
 // Create an Express application
@@ -29,6 +30,7 @@ app.use('/api/folders', foldersRouter);
 
 app.use('/api/notes', notesRouter);
 
+app.use('/api/tags', tagsRouter);
 
 // Custom 404 Not Found route handler
 app.use((req, res, next) => {

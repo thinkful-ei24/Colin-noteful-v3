@@ -4,7 +4,7 @@ const express = require('express');
 const Folder = require('../models/folder');
 const router = express.Router();
 const mongoose = require('mongoose');
-const Note = require('../models/note')
+const Note = require('../models/note');
 
 /* ============ GET all items ========== */
 router.get('/', (req, res, next) => {

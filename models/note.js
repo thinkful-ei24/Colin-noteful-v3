@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const noteSchema = new mongoose.Schema({
   title: { type: String, required: true },
   content: String,
-  folderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder' }
+  folderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder' },
+  tags: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Tag' }]
 });
 
 //set virtual properties beneath schema.  *make sure to include `mySchema.set('tooObject'), {viretuals: true}`
@@ -20,3 +21,5 @@ noteSchema.set('toObject', {
 });
 
 module.exports = mongoose.model('Note', noteSchema);
+
+
