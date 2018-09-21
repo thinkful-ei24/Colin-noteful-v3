@@ -75,8 +75,9 @@ router.get('/:id', (req, res, next) => {
 
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
-  const { title, content, folderId } = req.body;
-  console.log(title);
+
+  const { title, content, folderId, tags } = req.body;
+
   if(!title) {
     const err = new Error('Missing `title` in request body');
     err.status = 400;
@@ -86,7 +87,8 @@ router.post('/', (req, res, next) => {
   const newItem = {
     title: title,
     content: content,
-    folderId: folderId
+    folderId: folderId,
+    tags: tags
   };
 
   Note.create(newItem)
