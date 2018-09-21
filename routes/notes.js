@@ -20,6 +20,7 @@ router.get('/', (req, res, next) => {
     Note
       .find(filter)
       .where('folderId', folderId)
+      .populate('tags')
       .then(results => {
         res.json(results);
       })
@@ -48,6 +49,7 @@ router.get('/:id', (req, res, next) => {
 
   Note.findById(id)
     .populate('folderId')
+    .populate('tags')
     .then(result => {
       if (result) {
         res.json(result);
