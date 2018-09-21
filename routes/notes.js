@@ -103,7 +103,7 @@ router.post('/', (req, res, next) => {
 
   Note.create(newItem)
     .then( result => {
-      res.status(201).json(result);
+      res.location(`${req.originalUrl}/${result.id}`).status(201).json(result);
     })
     .catch(err => next(err));
   //console.log('Create a Note');
@@ -122,15 +122,20 @@ router.put('/:id', (req, res, next) => {
   const toUpdate = {};
   const updateFields = ['title', 'content', 'folderId', 'tags'];
 
+  if (!mongoose.Types.ObjectId.isValid) {
+    const err = 'Not a valid `id`';
+    err.status = 400;
+    return next(err);
+  }
+
   updateFields.forEach(field => {
     if (field in req.body) {
       toUpdate[field] = req.body[field];
     }
   });
 
-  console.log(toUpdate.folderId);
   if(toUpdate.tags !== undefined) {
-    tags.forEach(tag => {
+    toUpdate.tags.forEach(tag => {
       if (!mongoose.Types.ObjectId.isValid) {
         const err = 'Not a valid `id`';
         err.status = 400;
