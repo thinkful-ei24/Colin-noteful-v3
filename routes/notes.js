@@ -9,6 +9,7 @@ const mongoose = require('mongoose');
 router.get('/', (req, res, next) => {
   let searchTerm = req.query.searchTerm;
   let folderId = req.query.folderId;
+  let tagId = req.query.tagId;
 
   let filter = {};
   if (searchTerm) {
@@ -16,23 +17,21 @@ router.get('/', (req, res, next) => {
     filter = {$or: [{'title': expr}, {'content': expr}]};
   }
 
-  if(req.query.folderId) {
-    Note
-      .find(filter)
-      .where('folderId', folderId)
-      .populate('tags')
-      .then(results => {
-        res.json(results);
-      })
-      .catch(err => next(err));
-  } else {
-    Note.find(filter)
-      .sort({ updatedAt: 'desc' })
-      .then(results => {
-        res.json(results);
-      })
-      .catch(err => next(err));
+  if(folderId) {
+    filter.folderId = folderId;
   }
+
+  if(tagId) {
+    filter.tags = tagId;
+  }
+
+  Note
+    .find(filter)
+    .populate('tags')
+    .then(results => {
+      res.json(results);
+    })
+    .catch(err => next(err));
 });
 
 /* ========== GET/READ A SINGLE ITEM ========== */

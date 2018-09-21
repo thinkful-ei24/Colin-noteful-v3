@@ -39,7 +39,6 @@ router.get('/:id', (req, res, next) => {
     .findById(id)
     .then(results => {
       if(results) {
-        console.log(results);
         res.json(results);
       } else {
         next();
