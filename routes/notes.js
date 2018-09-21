@@ -76,12 +76,22 @@ router.get('/:id', (req, res, next) => {
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
 
-  const { title, content, folderId, tags } = req.body;
+  const { title, content, folderId, tags = [] } = req.body;
 
   if(!title) {
     const err = new Error('Missing `title` in request body');
     err.status = 400;
     return next(err);
+  }
+
+  if(tags) {
+    tags.forEach(tag => {
+      if (!mongoose.Types.ObjectId.isValid) {
+        const err = 'Not a valid `id`';
+        err.status = 400;
+        return next(err);
+      }
+    });
   }
 
   const newItem = {
@@ -110,13 +120,24 @@ router.put('/:id', (req, res, next) => {
 
   const id = req.params.id;
   const toUpdate = {};
-  const updateFields = ['title', 'content', 'folderId'];
+  const updateFields = ['title', 'content', 'folderId', 'tags'];
 
   updateFields.forEach(field => {
     if (field in req.body) {
       toUpdate[field] = req.body[field];
     }
   });
+
+  console.log(toUpdate.folderId);
+  if(toUpdate.tags !== undefined) {
+    tags.forEach(tag => {
+      if (!mongoose.Types.ObjectId.isValid) {
+        const err = 'Not a valid `id`';
+        err.status = 400;
+        return next(err);
+      }
+    });
+  }
 
   Note.findByIdAndUpdate(id, toUpdate, {new: true})
     .then(result => {
