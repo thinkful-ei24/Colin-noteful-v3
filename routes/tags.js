@@ -16,7 +16,6 @@ router.get('/', (req, res, next) => {
     .find()
     .sort({ name: 'desc' })
     .then(results => {
-      console.log(results);
       res.json(results);
     })
     .catch(err => {
@@ -62,12 +61,15 @@ router.post('/', (req, res, next) => {
 
   Tag.create(newTag)
     .then(results => {
-      console.log(results);
-      res.location(`${req.originalUrl}/${results.id}`).status(201).json(results);
+      if(results) {
+        res.location(`${req.originalUrl}/${results.id}`).status(201).json(results);
+      } else {
+        next();
+      }
     })
     .catch(err => {
-      if (err === 11000) {
-        err = Error('The Tag name already exists. We dont need another one.  \nLike... seriously just use the one thats already there');
+      if (err.code === 11000) {
+        err = new Error('The Tag name already exists. We dont need another one.  \nLike... seriously just use the one thats already there');
         err.status = 400;
       }
       next(err);

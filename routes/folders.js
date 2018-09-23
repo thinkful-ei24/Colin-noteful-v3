@@ -74,10 +74,6 @@ router.post('/', (req, res, next) => {
 
 /* =========== PUT update a folder by id =============*/
 router.put('/:id', (req, res, next) => {
-  if(!(req.params.id && req.body.id && req.params.id === req.body.id)) {
-    const message = `Request path id ${req.params.id} and ${req.body.id} must match`;
-    console.log(message);
-  }
 
   const id = req.params.id;
   const toUpdate = {};
@@ -89,9 +85,20 @@ router.put('/:id', (req, res, next) => {
     }
   });
 
+
+  if(!mongoose.Types.ObjectId.isValid(id)) {
+    const err = new Error('The `id` is not valid');
+    err.status = 400;
+    next(err);
+  }
+
   Folder.findByIdAndUpdate(id, toUpdate, {new: true})
     .then(result => {
-      res.json(result);
+      if(result) {
+        res.json(result);
+      } else {
+        next();
+      }
     })
     .catch(err => {
       if (err.code === 11000) {

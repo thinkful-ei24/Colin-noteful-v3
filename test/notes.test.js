@@ -92,15 +92,76 @@ describe('Notes API resource', function () {
           expect(res.body).to.have.length(data.length);
         });
     });
-    //
-    // it('should return a list of notes where the notes have the correct fields' ...........)
-    //
-    // it('should return the correct search result for a searchTerm query')
-    //
-    // it('should return correct search results for a folderId query',)
-    //
-    //
 
+    it('should return a list of notes where the notes have the correct fields', function () {
+      return Promise.all([
+        Note.find(),
+        chai.request(app)
+          .get('/api/notes')
+      ])
+        .then(([data, res]) => {
+          expect(res.body).to.be.an('array');
+          expect(res).to.be.json;
+          expect(res).to.have.status(200);
+          expect(res.body).to.have.length(data.length);
+          res.body.forEach(function (item, i) {
+            expect(item).to.be.a('object');
+            // Note: folderId and content are optional
+            expect(item).to.include.all.keys('id', 'title', 'createdAt', 'updatedAt', 'tags');
+            expect(item.id).to.equal(data[i].id);
+            expect(item.title).to.equal(data[i].title);
+            expect(item.content).to.equal(data[i].content);
+            expect(new Date(item.createdAt)).to.eql(data[i].createdAt);
+            expect(new Date(item.updatedAt)).to.eql(data[i].updatedAt);
+          });
+        });
+    });
+    //
+    it('should return the correct search result for a searchTerm query', function () {
+
+      const searchTerm = 'cats';
+      const regex = new RegExp(searchTerm, 'gi');
+
+      const dbPromise = Note.find({$or: [{'title': regex}, {'content': regex}]});
+      const apiPromise = chai.request(app)
+        .get(`/api/notes?searchTerm=${searchTerm}`);
+
+      return Promise.all([dbPromise, apiPromise])
+        .then(([db, res]) => {
+          expect(res).to.have.status(200);
+          expect(res).to.be.json;
+          expect(res.body).to.be.an('array');
+          expect(res.body).to.have.length(8);
+          res.body.forEach((item, i) => {
+            expect(item).to.be.an('object');
+            expect(item).to.include.keys('title', 'content', 'tags', 'createdAt', 'updatedAt');
+            expect(item.id).to.equal(db[i].id);
+            expect(item.title).to.equal(db[i].title);
+            expect(item.content).to.equal(db[i].content);
+            expect(new Date (item.createdAt)).to.eql(db[i].createdAt);
+            expect(new Date (item.updatedAt)).to.eql(db[i].updatedAt);
+          });
+        });
+    });
+    //
+    it('should return correct search results for a folderId query', function () {
+
+      let folder;
+      return Folder.findOne()
+        .then(data => {
+          folder = data;
+          return Promise.all([
+            Note.find({ folderId: folder.id  }),
+            chai.request(app).get(`/api/notes?folderId=${folder.id}`)
+          ]);
+        })
+        .then(([data, res]) => {
+          expect(res).to.have.status(200);
+          expect(res.body).to.be.an('array');
+          expect(res.body).to.have.length(data.length);
+          expect(res).to.be.json;
+        });
+    });
 
   });
 
