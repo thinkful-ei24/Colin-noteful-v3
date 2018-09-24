@@ -9,6 +9,8 @@ const { PORT, MONGODB_URI } = require('./config');
 const notesRouter = require('./routes/notes');
 const tagsRouter = require('./routes/tags');
 const foldersRouter = require('./routes/folders');
+const usersRouter = require('./routes/users.js');
+
 
 // Create an Express application
 const app = express();
@@ -25,6 +27,7 @@ app.use(express.static('public'));
 app.use(express.json());
 
 // Mount routers
+app.use('/api/users', usersRouter);
 
 app.use('/api/folders', foldersRouter);
 
