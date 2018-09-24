@@ -8,7 +8,7 @@ const tagSchema = new mongoose.Schema({
   }
 });
 
-tagSchema.set('timestamp', true);
+tagSchema.set('timestamps', true);
 
 tagSchema.set('toObject', {
   virtuals: true,

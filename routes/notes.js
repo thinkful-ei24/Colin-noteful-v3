@@ -9,6 +9,7 @@ const mongoose = require('mongoose');
 router.get('/', (req, res, next) => {
   let searchTerm = req.query.searchTerm;
   let folderId = req.query.folderId;
+  let tagId = req.query.tagId;
 
   let filter = {};
   if (searchTerm) {
@@ -16,22 +17,21 @@ router.get('/', (req, res, next) => {
     filter = {$or: [{'title': expr}, {'content': expr}]};
   }
 
-  if(req.query.folderId) {
-    Note
-      .find(filter)
-      .where('folderId', folderId)
-      .then(results => {
-        res.json(results);
-      })
-      .catch(err => next(err));
-  } else {
-    Note.find(filter)
-      .sort({ updatedAt: 'desc' })
-      .then(results => {
-        res.json(results);
-      })
-      .catch(err => next(err));
+  if(folderId) {
+    filter.folderId = folderId;
   }
+
+  if(tagId) {
+    filter.tags = tagId;
+  }
+
+  Note
+    .find(filter)
+    .populate('tags')
+    .then(results => {
+      res.json(results);
+    })
+    .catch(err => next(err));
 });
 
 /* ========== GET/READ A SINGLE ITEM ========== */
@@ -48,6 +48,7 @@ router.get('/:id', (req, res, next) => {
 
   Note.findById(id)
     .populate('folderId')
+    .populate('tags')
     .then(result => {
       if (result) {
         res.json(result);
@@ -58,38 +59,39 @@ router.get('/:id', (req, res, next) => {
     .catch(err => {
       next(err);
     });
-
-
-
-  //  this is my solution.  Above is the copied-from-answer-key solution
-  //  Note.findById(id)
-  //    .then((results) => {
-  //       res.json(results);
-  //    })
-  //    .catch(err =>  {
-  //      next(err);
-  //    });
 });
 
 /* ========== POST/CREATE AN ITEM ========== */
 router.post('/', (req, res, next) => {
-  const { title, content, folderId } = req.body;
-  console.log(title);
+
+  const { title, content, folderId, tags = [] } = req.body;
+
   if(!title) {
     const err = new Error('Missing `title` in request body');
     err.status = 400;
     return next(err);
   }
 
+  if(tags) {
+    tags.forEach(tag => {
+      if (!mongoose.Types.ObjectId.isValid(tag.id)) {
+        const err = 'Not a valid `id`';
+        err.status = 400;
+        return next(err);
+      }
+    });
+  }
+
   const newItem = {
     title: title,
     content: content,
-    folderId: folderId
+    folderId: folderId,
+    tags: tags
   };
 
   Note.create(newItem)
     .then( result => {
-      res.status(201).json(result);
+      res.location(`${req.originalUrl}/${result.id}`).status(201).json(result);
     })
     .catch(err => next(err));
   //console.log('Create a Note');
@@ -99,14 +101,16 @@ router.post('/', (req, res, next) => {
 
 /* ========== PUT/UPDATE A SINGLE ITEM ========== */
 router.put('/:id', (req, res, next) => {
-  if(!(req.params.id && req.body.id && req.params.id === req.body.id)) {
-    const message = `Request path id ${req.params.id} and ${req.body.id} must match`;
-    console.error(message);
-  }
 
   const id = req.params.id;
   const toUpdate = {};
-  const updateFields = ['title', 'content', 'folderId'];
+  const updateFields = ['title', 'content', 'folderId', 'tags'];
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const err = new Error('Not a valid `id`');
+    err.status = 404;
+    return next(err);
+  }
 
   updateFields.forEach(field => {
     if (field in req.body) {
@@ -114,9 +118,29 @@ router.put('/:id', (req, res, next) => {
     }
   });
 
+  if(toUpdate.tags !== undefined) {
+    toUpdate.tags.forEach(tag => {
+      if (!mongoose.Types.ObjectId.isValid(tag.id)) {
+        const err = new Error('Not a valid `id`');
+        err.status = 400;
+        return next(err);
+      }
+    });
+  }
+
+  if (!toUpdate.title) {
+    const message = new Error('Missing `title` in request body');
+    message.status = 400;
+    return next(message);
+  }
+
   Note.findByIdAndUpdate(id, toUpdate, {new: true})
     .then(result => {
-      res.json(result);
+      if(result) {
+        res.json(result);
+      } else {
+        next();
+      }
     })
     .catch(err => next(err));
 
