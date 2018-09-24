@@ -14,21 +14,66 @@ router.post('/', (req, res, next) => {
   const password = req.body.password; // same as { password } = req.body
   const fullName = req.body.fullName;
 
-  // *** validation checks ***
+  //*** validation checks ***
   //checks to make sure user has a username and password
-  //  const requiredFields = ['username', 'password'];
-  //  const missingField = requiredFields.find(field => !(field in req.body));
-  //
-  //  if(missingField) {
-  //    return res.status(422).json({
-  //      code: 422,
-  //      reason: 'Validation Error',
-  //      message: 'Missing required field',
-  //      location: missingField
-  //    });
-  //  }
+  const requiredFields = ['username', 'password'];
+  const missingField = requiredFields.find(field => !(field in req.body));
 
-  //check to make sure username doesn't already exist
+  if(missingField) {
+    return res.status(422).json({
+      code: 422,
+      reason: 'Validation Error',
+      message: 'Missing required field',
+      location: missingField
+    });
+  }
+
+  //checks to make sure the fields `username`, `password`, and `fullName` are strings
+  const stringFields = ['username', 'password', 'fullName'];
+  const nonStringFields = stringFields.find(field => field in req.body && typeof req.body[field] !== 'string');
+
+  if (nonStringFields) {
+    return res.status(422).json({
+      code: 422,
+      reason: 'ValidationError',
+      message: 'Incorrect field type: epxected string',
+      location: nonStringFields
+    });
+  }
+
+  //username and password should not have leading/trailing whitespace
+  const explicitlyTrimFields = ['username', 'password'];
+  const nonTrimField = explicitlyTrimFields.find(field => req.body[field].trim() !== req.body[field]);
+
+  if (nonTrimField) {
+    return res.status(422).json({
+      code: 422,
+      reason: 'ValidationError',
+      message: 'username and password must not start or end with whitespace',
+      location: nonTrimField
+    });
+  }
+
+  //username must be a minimum of 1 character long
+  if(username.length < 1) {
+    return res.status(422).json({
+      code: 422,
+      reason: 'ValidationError',
+      message: 'username must be at least 1 character long... but you should probably make it longer',
+      location: username
+    });
+  }
+
+  //password must be between 8 and 72 characters long
+  if (password.trim().length < 8 || password.trim().length > 72) {
+    return res.status(422).json({
+      code: 422,
+      reason: 'ValidationError',
+      message: 'Password must be between 8 and 72 characters',
+      location: password
+    });
+  }
+
   User.hashPassword(password)
     .then(digest => {
       const newUser = {
