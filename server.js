@@ -3,6 +3,7 @@
 const express = require('express');
 const morgan = require('morgan');
 const mongoose = require('mongoose');
+const passport = require('passport');
 
 const { PORT, MONGODB_URI } = require('./config');
 
@@ -10,6 +11,7 @@ const notesRouter = require('./routes/notes');
 const tagsRouter = require('./routes/tags');
 const foldersRouter = require('./routes/folders');
 const usersRouter = require('./routes/users.js');
+const authRouter = require('./routes/auth.js');
 
 
 // Create an Express application
@@ -20,6 +22,10 @@ app.use(morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'common', {
   skip: () => process.env.NODE_ENV === 'test'
 }));
 
+//Configure passport to utilize the local user authentication strategy
+const localStrategy = require('./passport/local.js');
+passport.use(localStrategy);
+
 // Create a static webserver
 app.use(express.static('public'));
 
@@ -27,6 +33,8 @@ app.use(express.static('public'));
 app.use(express.json());
 
 // Mount routers
+app.use('/api/login', authRouter);
+
 app.use('/api/users', usersRouter);
 
 app.use('/api/folders', foldersRouter);
@@ -43,7 +51,7 @@ app.use((req, res, next) => {
 });
 
 // Custom Error Handler
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
   if (err.status) {
     const errBody = Object.assign({}, err, { message: err.message });
     res.status(err.status).json(errBody);

@@ -16,48 +16,37 @@ router.post('/', (req, res, next) => {
 
   // *** validation checks ***
   //checks to make sure user has a username and password
-  const requiredFields = ['username', 'password'];
-  const missingField = requiredFields.find(field => !(field in req.body));
+  //  const requiredFields = ['username', 'password'];
+  //  const missingField = requiredFields.find(field => !(field in req.body));
+  //
+  //  if(missingField) {
+  //    return res.status(422).json({
+  //      code: 422,
+  //      reason: 'Validation Error',
+  //      message: 'Missing required field',
+  //      location: missingField
+  //    });
+  //  }
 
-  if(missingField) {
-    return res.status(422).json({
-      code: 422,
-      reason: 'Validation Error',
-      message: 'Missing required field',
-      location: missingField
-    });
-  }
-
-  // check to make sure username doesn't already exist
-  return User.find({username})
-    .count()
-    .then(count => {
-      if(count > 0) {
-        return Promise.reject({
-          code: 422,
-          reason: 'Validation Error',
-          message: 'Username is already taken',
-          location: 'username'
-        });
-      }
-      return User.hashPassword(password);
-    })
-    .then(digest => {
-      console.log(digest);
-      return User.create({
+  //check to make sure username doesn't already exist
+  //  User.hashPassword(password)
+  //  .then(digest => {
+      User.create({
         username,
         password: digest,
         fullName
-      });
-    })
+      })
+  //})
     .then(user => {
-      return res.status(201).location(`/api/users/${user.id}`).json(user.serialize());
+      return res.status(201).location(`/api/users/${user.id}`).json(user);
     })
     .catch(err => {
-      if (err.reason === 'ValidationError') {
-        return res.status(err.code).json(err);
+      console.log(err);
+      if (err.code === 11000) {
+        err = new Error('The username already exists');
+        err.status= 400;
       }
-      res.status(500).json({code: 500, message: 'Internal server error'});
+      next(err);
     });
 
 });

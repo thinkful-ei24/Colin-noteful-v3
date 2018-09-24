@@ -6,10 +6,14 @@ const userSchema = new mongoose.Schema({
   password: {type: String, required: true}
 });
 
+userSchema.methods.validatePassword = function (password) {
+  return password === this.password;
+};
+
 userSchema.set('toObject', {
   virtuals: true,
   versionKey: false,
-  trasform: (doc, result) => {
+  transform: (doc, result) => {
     delete result._id;
     delete result.__v;
     delete result.password;
