@@ -29,14 +29,15 @@ router.post('/', (req, res, next) => {
   //  }
 
   //check to make sure username doesn't already exist
-  //  User.hashPassword(password)
-  //  .then(digest => {
-      User.create({
+  User.hashPassword(password)
+    .then(digest => {
+      const newUser = {
         username,
         password: digest,
         fullName
-      })
-  //})
+      };
+      return User.create(newUser);
+    })
     .then(user => {
       return res.status(201).location(`/api/users/${user.id}`).json(user);
     })
