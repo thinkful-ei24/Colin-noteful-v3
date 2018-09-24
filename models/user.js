@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
 
 const userSchema = new mongoose.Schema({
   fullname: {type: String},
@@ -7,7 +8,11 @@ const userSchema = new mongoose.Schema({
 });
 
 userSchema.methods.validatePassword = function (password) {
-  return password === this.password;
+  return bcrypt.compare(password, this.password);
+};
+
+userSchema.statics.hashPassword = password => {
+  return bcrypt.hash(password, 10);
 };
 
 userSchema.set('toObject', {
