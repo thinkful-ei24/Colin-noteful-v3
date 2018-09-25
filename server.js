@@ -12,6 +12,8 @@ const tagsRouter = require('./routes/tags');
 const foldersRouter = require('./routes/folders');
 const usersRouter = require('./routes/users.js');
 const authRouter = require('./routes/auth.js');
+const jwtStrategy = require('./passport/jwt.js');
+
 
 
 // Create an Express application
@@ -25,6 +27,9 @@ app.use(morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'common', {
 //Configure passport to utilize the local user authentication strategy
 const localStrategy = require('./passport/local.js');
 passport.use(localStrategy);
+
+//Configure passpot to use JWT authentication strategy
+passport.use(jwtStrategy);
 
 // Create a static webserver
 app.use(express.static('public'));

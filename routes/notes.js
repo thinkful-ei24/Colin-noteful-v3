@@ -4,6 +4,10 @@ const express = require('express');
 const Note = require('../models/note.js');
 const router = express.Router();
 const mongoose = require('mongoose');
+const passport= require('passport');
+
+
+router.use(passport.authenticate('jwt', {session: false, failWithError: true}));
 
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
