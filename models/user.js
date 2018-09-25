@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   fullname: {type: String},
@@ -6,10 +7,18 @@ const userSchema = new mongoose.Schema({
   password: {type: String, required: true}
 });
 
+userSchema.methods.validatePassword = function (password) {
+  return bcrypt.compare(password, this.password);
+};
+
+userSchema.statics.hashPassword = password => {
+  return bcrypt.hash(password, 10);
+};
+
 userSchema.set('toObject', {
   virtuals: true,
   versionKey: false,
-  trasform: (doc, result) => {
+  transform: (doc, result) => {
     delete result._id;
     delete result.__v;
     delete result.password;
