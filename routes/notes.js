@@ -82,6 +82,8 @@ router.post('/', (req, res, next) => {
     });
   }
 
+  folderId = folderId === '' ? null : folderId;
+
   const newItem = {
     title: title,
     content: content,
@@ -120,12 +122,17 @@ router.put('/:id', (req, res, next) => {
 
   if(toUpdate.tags !== undefined) {
     toUpdate.tags.forEach(tag => {
-      if (!mongoose.Types.ObjectId.isValid(tag.id)) {
+      if (!mongoose.Types.ObjectId.isValid(tag)) {
         const err = new Error('Not a valid `id`');
         err.status = 400;
         return next(err);
       }
     });
+  }
+
+  if(toUpdate.folderId === '') {
+    delete toUpdate.folderId;
+    toUpdate.$unset = {folderId: 1};
   }
 
   if (!toUpdate.title) {
