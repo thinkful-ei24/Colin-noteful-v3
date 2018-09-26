@@ -14,8 +14,10 @@ router.get('/', (req, res, next) => {
   let searchTerm = req.query.searchTerm;
   let folderId = req.query.folderId;
   let tagId = req.query.tagId;
+  const userId = req.user.id;
 
-  let filter = {};
+  let filter = { userId: userId };
+
   if (searchTerm) {
     const expr = RegExp(searchTerm, 'gi');
     filter = {$or: [{'title': expr}, {'content': expr}]};
@@ -42,6 +44,7 @@ router.get('/', (req, res, next) => {
 router.get('/:id', (req, res, next) => {
 
   let id = req.params.id;
+  const userId = req.user.id;
 
   //test for valid id
   if(!mongoose.Types.ObjectId.isValid(id)) {
@@ -50,10 +53,12 @@ router.get('/:id', (req, res, next) => {
     return next(err);
   }
 
-  Note.findById(id)
+  Note.find({userId: userId,
+    _id: id
+  })
     .populate('folderId')
     .populate('tags')
-    .then(result => {
+    .then(([result]) => {
       if (result) {
         res.json(result);
       } else {
@@ -69,6 +74,7 @@ router.get('/:id', (req, res, next) => {
 router.post('/', (req, res, next) => {
 
   const { title, content, folderId, tags = [] } = req.body;
+  const userId = req.user.id;
 
   if(!title) {
     const err = new Error('Missing `title` in request body');
@@ -90,7 +96,8 @@ router.post('/', (req, res, next) => {
     title: title,
     content: content,
     folderId: folderId,
-    tags: tags
+    tags: tags,
+    userId: userId
   };
 
   Note.create(newItem)
@@ -107,8 +114,9 @@ router.post('/', (req, res, next) => {
 router.put('/:id', (req, res, next) => {
 
   const id = req.params.id;
-  const toUpdate = {};
   const updateFields = ['title', 'content', 'folderId', 'tags'];
+  const userId = req.user.id;
+  const toUpdate = {userId: userId};
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     const err = new Error('Not a valid `id`');

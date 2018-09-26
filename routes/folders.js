@@ -10,8 +10,12 @@ const passport = require('passport');
 router.use(passport.authenticate('jwt', {session: false, failWithError: true}));
 
 /* ============ GET all items ========== */
+
 router.get('/', (req, res, next) => {
-  Folder.find()
+
+  const userId = req.user.id;
+
+  Folder.find({userId: userId})
     .sort({ name: 'desc' })
     .then(results => {
       console.log(results);
