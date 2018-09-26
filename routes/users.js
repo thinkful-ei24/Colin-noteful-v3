@@ -12,7 +12,7 @@ router.post('/', (req, res, next) => {
 
   const username = req.body.username; // same as { username  } = req.body
   const password = req.body.password; // same as { password } = req.body
-  const fullName = req.body.fullName;
+  let fullname = req.body.fullname;
 
   //*** validation checks ***
   //checks to make sure user has a username and password
@@ -29,14 +29,14 @@ router.post('/', (req, res, next) => {
   }
 
   //checks to make sure the fields `username`, `password`, and `fullName` are strings
-  const stringFields = ['username', 'password', 'fullName'];
+  const stringFields = ['username', 'password', 'fullname'];
   const nonStringFields = stringFields.find(field => field in req.body && typeof req.body[field] !== 'string');
 
   if (nonStringFields) {
     return res.status(422).json({
       code: 422,
-      reason: 'ValidationError',
-      message: 'Incorrect field type: epxected string',
+      reason: 'Validation Error',
+      message: 'Incorrect field type: expected string',
       location: nonStringFields
     });
   }
@@ -48,19 +48,23 @@ router.post('/', (req, res, next) => {
   if (nonTrimField) {
     return res.status(422).json({
       code: 422,
-      reason: 'ValidationError',
+      reason: 'Validation Error',
       message: 'username and password must not start or end with whitespace',
       location: nonTrimField
     });
+  }
+
+  if(fullname) {
+    fullname = fullname.trim();
   }
 
   //username must be a minimum of 1 character long
   if(username.length < 1) {
     return res.status(422).json({
       code: 422,
-      reason: 'ValidationError',
+      reason: 'Validation Error',
       message: 'username must be at least 1 character long... but you should probably make it longer',
-      location: username
+      location: 'username'
     });
   }
 
@@ -68,9 +72,9 @@ router.post('/', (req, res, next) => {
   if (password.trim().length < 8 || password.trim().length > 72) {
     return res.status(422).json({
       code: 422,
-      reason: 'ValidationError',
+      reason: 'Validation Error',
       message: 'Password must be between 8 and 72 characters',
-      location: password
+      location: 'password'
     });
   }
 
@@ -79,7 +83,7 @@ router.post('/', (req, res, next) => {
       const newUser = {
         username,
         password: digest,
-        fullName
+        fullname
       };
       return User.create(newUser);
     })
