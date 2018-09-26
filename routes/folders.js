@@ -29,6 +29,7 @@ router.get('/', (req, res, next) => {
 router.get('/:id', (req, res, next) => {
 
   let id = req.params.id;
+  let userId = req.user.id;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     const err = new Error('this `id` is not valid');
@@ -36,8 +37,7 @@ router.get('/:id', (req, res, next) => {
     return next(err);
   }
 
-  Folder.findById(id)
-
+  Folder.findOne({userId, _id: id})
     .then(results => {
       if(results) {
         res.json(results);
@@ -53,14 +53,17 @@ router.get('/:id', (req, res, next) => {
 router.post('/', (req, res, next) => {
 
   const {name} = req.body;
-
+  const userId = req.user.id;
   if (!name) {
     const err = new Error('Missing `title` in request body');
     err.status = 400;
     return next(err);
   }
 
-  const newItem = {name: name};
+  const newItem = {
+    name,
+    userId
+  };
 
   Folder.create(newItem)
     .then(result => {
@@ -82,8 +85,9 @@ router.post('/', (req, res, next) => {
 /* =========== PUT update a folder by id =============*/
 router.put('/:id', (req, res, next) => {
 
-  const id = req.params.id;
-  const toUpdate = {};
+  const { id } = req.params;
+  const userId = req.user.id;
+  const toUpdate = {userId};
   const updateFields = ['name'];
 
   updateFields.forEach(field => {
