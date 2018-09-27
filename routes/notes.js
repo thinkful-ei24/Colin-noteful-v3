@@ -95,10 +95,15 @@ router.post('/', (req, res, next) => {
     }
     return Folder.findOne({_id: folderId, userId})
       .then(result => {
-        if(result.length === 1) {
+        console.log('result is', result);
+        console.log(folderId);
+        console.log(userId);
+        if(result) {
           return Promise.resolve(true);
         } else {
-          return Promise.reject(false);
+          const err = new Error('the folder does not exist');
+          err.status = 400;
+          return Promise.reject(err);
         }
       });
   }
@@ -146,9 +151,10 @@ router.post('/', (req, res, next) => {
     tagsBelongToUser(tags, userId)
   ])
     .then(() => {
-      Note.create(newItem);
+      return Note.create(newItem);
     })
     .then( result => {
+      console.log(result);
       res.location(`${req.originalUrl}/${result.id}`).status(201).json(result);
     })
     .catch(err => {
