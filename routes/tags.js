@@ -13,9 +13,10 @@ router.use(passport.authenticate('jwt', {session: false, failWithError: true}));
 /* ========== GET all tags ========= */
 router.get('/', (req, res, next) => {
 
+  const userId = req.user.id;
 
   Tag
-    .find()
+    .find({userId})
     .sort({ name: 'desc' })
     .then(results => {
       res.json(results);
@@ -29,6 +30,7 @@ router.get('/', (req, res, next) => {
 router.get('/:id', (req, res, next) => {
 
   let { id } = req.params;
+  const userId = req.user.id;
 
   if(!mongoose.Types.ObjectId.isValid(id)) {
     const err = new Error('this `id` is not valid');
@@ -37,7 +39,7 @@ router.get('/:id', (req, res, next) => {
   }
 
   Tag
-    .findById(id)
+    .findOne({userId, _id: id})
     .then(results => {
       if(results) {
         res.json(results);
@@ -52,6 +54,7 @@ router.get('/:id', (req, res, next) => {
 router.post('/', (req, res, next) => {
 
   const { name } = req.body;
+  const userId = req.user.id;
 
   if(!name) {
     const err = new Error('Missing `title` in request body');
@@ -59,7 +62,7 @@ router.post('/', (req, res, next) => {
     return next(err);
   }
 
-  const newTag = {name: name};
+  const newTag = {name, userId};
 
   Tag.create(newTag)
     .then(results => {
@@ -84,8 +87,10 @@ router.put('/:id', (req, res, next) => {
 
   const id = req.params.id;
   const { name } = req.body;
+  const userId = req.user.id;
   const toUpdate = {
-    name: name,
+    name,
+    userId
   };
 
   if(!mongoose.Types.ObjectId.isValid(id)) {

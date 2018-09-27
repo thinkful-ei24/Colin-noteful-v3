@@ -2,6 +2,8 @@
 
 const express = require('express');
 const Note = require('../models/note.js');
+const Folder = require('../models/folder.js');
+const Tag = require('../models/tags.js');
 const router = express.Router();
 const mongoose = require('mongoose');
 const passport= require('passport');
@@ -14,8 +16,10 @@ router.get('/', (req, res, next) => {
   let searchTerm = req.query.searchTerm;
   let folderId = req.query.folderId;
   let tagId = req.query.tagId;
+  const userId = req.user.id;
 
-  let filter = {};
+  let filter = { userId: userId };
+
   if (searchTerm) {
     const expr = RegExp(searchTerm, 'gi');
     filter = {$or: [{'title': expr}, {'content': expr}]};
@@ -42,6 +46,7 @@ router.get('/', (req, res, next) => {
 router.get('/:id', (req, res, next) => {
 
   let id = req.params.id;
+  const userId = req.user.id;
 
   //test for valid id
   if(!mongoose.Types.ObjectId.isValid(id)) {
@@ -50,10 +55,12 @@ router.get('/:id', (req, res, next) => {
     return next(err);
   }
 
-  Note.findById(id)
+  Note.find({userId: userId,
+    _id: id
+  })
     .populate('folderId')
     .populate('tags')
-    .then(result => {
+    .then(([result]) => {
       if (result) {
         res.json(result);
       } else {
@@ -69,6 +76,7 @@ router.get('/:id', (req, res, next) => {
 router.post('/', (req, res, next) => {
 
   const { title, content, folderId, tags = [] } = req.body;
+  const userId = req.user.id;
 
   if(!title) {
     const err = new Error('Missing `title` in request body');
@@ -76,14 +84,58 @@ router.post('/', (req, res, next) => {
     return next(err);
   }
 
-  if(tags) {
-    tags.forEach(tag => {
-      if (!mongoose.Types.ObjectId.isValid(tag.id)) {
-        const err = 'Not a valid `id`';
-        err.status = 400;
-        return next(err);
-      }
-    });
+  function folderIdBelongsToUser(folderId, userId) {
+    if (!folderId) {
+      return Promise.resolve(true);
+    }
+    if(!mongoose.Types.ObjectId.isValid(folderId)) {
+      const err = new Error('The folderId is not valid');
+      err.status = 400;
+      return Promise.reject(err);
+    }
+    return Folder.findOne({_id: folderId, userId})
+      .then(result => {
+        console.log('result is', result);
+        console.log(folderId);
+        console.log(userId);
+        if(result) {
+          return Promise.resolve(true);
+        } else {
+          const err = new Error('the folder does not exist');
+          err.status = 400;
+          return Promise.reject(err);
+        }
+      });
+  }
+
+  function tagsBelongToUser(tags, userId) {
+    if (!tags) {
+      return Promise.resolve(true);
+    }
+    if (tags && !Array.isArray(tags)) {
+      const err = new Error('The `tags` property must be an array');
+      err.status = 400;
+      return Promise.reject(err);
+    }
+    if(tags && Array.isArray(tags)) {
+      tags.forEach(tag => {
+        if (!mongoose.Types.ObjectId.isValid(tag)) {
+          const err = new Error('Not a valid `id`');
+          err.status = 400;
+          return Promise.reject(err);
+        }
+      });
+    }
+    return Tag.find({$and: [{_id: {$in:tags}, userId}]})
+      .then( result => {
+        if(result.length !== tags.length) {
+          const err = new Error('One or more tags are invalid');
+          err.status = 400;
+          return Promise.reject(err);
+        } else {
+          return Promise.resolve(true);
+        }
+      });
   }
 
   folderId = folderId === '' ? null : folderId;
@@ -92,16 +144,25 @@ router.post('/', (req, res, next) => {
     title: title,
     content: content,
     folderId: folderId,
-    tags: tags
+    tags: tags,
+    userId: userId
   };
 
-  Note.create(newItem)
+  Promise.all([
+    folderIdBelongsToUser(folderId, userId),
+    tagsBelongToUser(tags, userId)
+  ])
+    .then(() => {
+      return Note.create(newItem);
+    })
     .then( result => {
+      console.log(result);
       res.location(`${req.originalUrl}/${result.id}`).status(201).json(result);
     })
-    .catch(err => next(err));
-  //console.log('Create a Note');
-  //res.location('path/to/new/document').status(201).json({ id: 2, title: 'Temp 2' });
+    .catch(err => {
+      next(err);
+    });
+
 
 });
 
@@ -109,8 +170,9 @@ router.post('/', (req, res, next) => {
 router.put('/:id', (req, res, next) => {
 
   const id = req.params.id;
-  const toUpdate = {};
   const updateFields = ['title', 'content', 'folderId', 'tags'];
+  const userId = req.user.id;
+  const toUpdate = {userId: userId};
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     const err = new Error('Not a valid `id`');
