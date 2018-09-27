@@ -67,7 +67,6 @@ router.post('/', (req, res, next) => {
 
   Folder.create(newItem)
     .then(result => {
-      console.log(result);
       res.location(`${req.originalUrl}/${result.id}`).status(201).json(result);
     })
     .catch(err => {

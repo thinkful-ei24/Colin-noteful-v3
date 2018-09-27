@@ -11,9 +11,10 @@ const Note = require('../models/note.js');
 const Folder = require('../models/folder.js');
 const Tag = require('../models/tags.js');
 
-const seedNotes = require('../db/seed/notes.js');
-const folders = require('../db/seed/folders.js');
-const tags = require('../db/seed/folders.js');
+//const seedNotes = require('../db/seed/notes.js');
+//const folders = require('../db/seed/folders.js');
+//const tags = require('../db/seed/folders.js');
+const {notes, folders, tags} = require('../db/data.js');
 
 const expect = chai.expect;
 chai.use(chaiHttp);
@@ -27,7 +28,7 @@ describe('Notes API resource', function () {
 
   beforeEach(function () {
     return Promise.all([
-      Note.insertMany(seedNotes),
+      Note.insertMany(notes),
       Folder.insertMany(folders),
       Folder.createIndexes(),
       Tag.insertMany(tags),

@@ -2,6 +2,8 @@
 
 const express = require('express');
 const Note = require('../models/note.js');
+const Folder = require('../models/folder.js');
+const Tag = require('../models/tags.js');
 const router = express.Router();
 const mongoose = require('mongoose');
 const passport= require('passport');
@@ -82,14 +84,53 @@ router.post('/', (req, res, next) => {
     return next(err);
   }
 
-  if(tags) {
-    tags.forEach(tag => {
-      if (!mongoose.Types.ObjectId.isValid(tag.id)) {
-        const err = 'Not a valid `id`';
-        err.status = 400;
-        return next(err);
-      }
-    });
+  function folderIdBelongsToUser(folderId, userId) {
+    if (!folderId) {
+      return Promise.resolve(true);
+    }
+    if(!mongoose.Types.ObjectId.isValid(folderId)) {
+      const err = new Error('The folderId is not valid');
+      err.status = 400;
+      return Promise.reject(err);
+    }
+    return Folder.findOne({_id: folderId, userId})
+      .then(result => {
+        if(result.length === 1) {
+          return Promise.resolve(true);
+        } else {
+          return Promise.reject(false);
+        }
+      });
+  }
+
+  function tagsBelongToUser(tags, userId) {
+    if (!tags) {
+      return Promise.resolve(true);
+    }
+    if (tags && !Array.isArray(tags)) {
+      const err = new Error('The `tags` property must be an array');
+      err.status = 400;
+      return Promise.reject(err);
+    }
+    if(tags && Array.isArray(tags)) {
+      tags.forEach(tag => {
+        if (!mongoose.Types.ObjectId.isValid(tag)) {
+          const err = new Error('Not a valid `id`');
+          err.status = 400;
+          return Promise.reject(err);
+        }
+      });
+    }
+    return Tag.find({$and: [{_id: {$in:tags}, userId}]})
+      .then( result => {
+        if(result.length !== tags.length) {
+          const err = new Error('One or more tags are invalid');
+          err.status = 400;
+          return Promise.reject(err);
+        } else {
+          return Promise.resolve(true);
+        }
+      });
   }
 
   const newItem = {
@@ -100,13 +141,20 @@ router.post('/', (req, res, next) => {
     userId: userId
   };
 
-  Note.create(newItem)
+  Promise.all([
+    folderIdBelongsToUser(folderId, userId),
+    tagsBelongToUser(tags, userId)
+  ])
+    .then(() => {
+      Note.create(newItem);
+    })
     .then( result => {
       res.location(`${req.originalUrl}/${result.id}`).status(201).json(result);
     })
-    .catch(err => next(err));
-  //console.log('Create a Note');
-  //res.location('path/to/new/document').status(201).json({ id: 2, title: 'Temp 2' });
+    .catch(err => {
+      next(err);
+    });
+
 
 });
 
