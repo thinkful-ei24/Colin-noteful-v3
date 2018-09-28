@@ -11,6 +11,73 @@ const passport= require('passport');
 
 router.use(passport.authenticate('jwt', {session: false, failWithError: true}));
 
+
+function folderIdBelongsToUser(folderId, userId) {
+  if (!folderId) {
+    return Promise.resolve(true);
+  }
+  if(!mongoose.Types.ObjectId.isValid(folderId)) {
+    const err = new Error('The folderId is not valid');
+    err.status = 400;
+    return Promise.reject(err);
+  }
+  return Folder.findOne({_id: folderId, userId})
+    .then(result => {
+      if(result) {
+        return Promise.resolve(true);
+      } else {
+        const err = new Error('the folder does not exist');
+        err.status = 400;
+        return Promise.reject(err);
+      }
+    });
+}
+
+function tagsBelongToUser(tags, userId) {
+  if (!tags) {
+    return Promise.resolve(true);
+  }
+  if (tags && !Array.isArray(tags)) {
+    const err = new Error('The `tags` property must be an array');
+    err.status = 400;
+    return Promise.reject(err);
+  }
+  //if(tags && Array.isArray(tags)) {
+  //  console.log(tags);
+  //  tags.forEach(tag => {
+  //    console.log(tag);
+  //    if (!mongoose.Types.ObjectId.isValid(tag)) {
+  //      const err = new Error('Not a valid `id`');
+  //      err.status = 400;
+  //      return Promise.reject(err);
+  //    }
+  //  });
+  //}
+  if(tags && Array.isArray(tags)) {
+    for (let index in tags) {
+      if (!mongoose.Types.ObjectId.isValid(tags[index])) {
+        const err = new Error('Not a valid `id`');
+        err.status = 400;
+        return Promise.reject(err);
+      }
+    }
+  }
+  return Tag.find({$and: [{_id: {$in:tags}, userId}]})
+    .then( result => {
+      if(result.length !== tags.length) {
+        const err = new Error('One or more tags are invalid');
+        err.status = 400;
+        return Promise.reject(err);
+      } else {
+        return Promise.resolve(true);
+      }
+    });
+}
+
+
+
+
+
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
   let searchTerm = req.query.searchTerm;
@@ -84,76 +151,16 @@ router.post('/', (req, res, next) => {
     return next(err);
   }
 
-  function folderIdBelongsToUser(folderId, userId) {
-    if (!folderId) {
-      return Promise.resolve(true);
-    }
-    if(!mongoose.Types.ObjectId.isValid(folderId)) {
-      const err = new Error('The folderId is not valid');
-      err.status = 400;
-      return Promise.reject(err);
-    }
-    return Folder.findOne({_id: folderId, userId})
-      .then(result => {
-        if(result) {
-          return Promise.resolve(true);
-        } else {
-          const err = new Error('the folder does not exist');
-          err.status = 400;
-          return Promise.reject(err);
-        }
-      });
-  }
-
-  function tagsBelongToUser(tags, userId) {
-    if (!tags) {
-      return Promise.resolve(true);
-    }
-    if (tags && !Array.isArray(tags)) {
-      const err = new Error('The `tags` property must be an array');
-      err.status = 400;
-      return Promise.reject(err);
-    }
-    //if(tags && Array.isArray(tags)) {
-    //  console.log(tags);
-    //  tags.forEach(tag => {
-    //    console.log(tag);
-    //    if (!mongoose.Types.ObjectId.isValid(tag)) {
-    //      const err = new Error('Not a valid `id`');
-    //      err.status = 400;
-    //      return Promise.reject(err);
-    //    }
-    //  });
-    //}
-    if(tags && Array.isArray(tags)) {
-      for (let index in tags) {
-        if (!mongoose.Types.ObjectId.isValid(tags[index])) {
-          const err = new Error('Not a valid `id`');
-          err.status = 400;
-          return Promise.reject(err);
-        }
-      }
-    }
-
-    return Tag.find({$and: [{_id: {$in:tags}, userId}]})
-      .then( result => {
-        if(result.length !== tags.length) {
-          const err = new Error('One or more tags are invalid');
-          err.status = 400;
-          return Promise.reject(err);
-        } else {
-          return Promise.resolve(true);
-        }
-      });
-  }
-
   const newItem = {
-    title: title,
-    content: content,
-    folderId: folderId,
-    tags: tags,
-    userId: userId
+    title,
+    content,
+    tags,
+    userId
   };
+
+  if(mongoose.Types.ObjectId.isValid(folderId)) {
+    newItem.folderId = folderId;
+  }
 
   Promise.all([
     folderIdBelongsToUser(folderId, userId),
@@ -176,12 +183,13 @@ router.post('/', (req, res, next) => {
 router.put('/:id', (req, res, next) => {
 
   const id = req.params.id;
-  const updateFields = ['title', 'content', 'folderId', 'tags'];
   const userId = req.user.id;
-  const toUpdate = {userId: userId};
+  const { title, content, folderId, tags } = req.body;
+  const toUpdate = { title, content, userId, folderId, tags};
 
-
-
+  if(!folderId || folderId === '') {
+    delete toUpdate.folderId;
+  }
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     const err = new Error('Not a valid `id`');
@@ -189,86 +197,17 @@ router.put('/:id', (req, res, next) => {
     return next(err);
   }
 
-  updateFields.forEach(field => {
-    if (field in req.body) {
-      toUpdate[field] = req.body[field];
-    }
-  });
-
-  //if(toUpdate.tags !== undefined) {
-  //  toUpdate.tags.forEach(tag => {
-  //    if (!mongoose.Types.ObjectId.isValid(tag.id)) {
-  //      const err = new Error('Not a valid `id`');
-  //      err.status = 400;
-  //      return next(err);
-  //    }
-  //  });
-  //}
-  function folderIdBelongsToUser(folderId, userId) {
-    if (!folderId) {
-      return Promise.resolve(true);
-    }
-    if(!mongoose.Types.ObjectId.isValid(folderId)) {
-      const err = new Error('The folderId is not valid');
-      err.status = 400;
-      return Promise.reject(err);
-    }
-    return Folder.findOne({_id: folderId, userId})
-      .then(result => {
-        if(result) {
-          return Promise.resolve(true);
-        } else {
-          const err = new Error('the folder does not exist');
-          err.status = 400;
-          return Promise.reject(err);
-        }
-      });
+  if (title === '') {
+    const err = new Error('Missing `title` in request body');
+    err.status = 400;
+    return next(err);
   }
 
-  function tagsBelongToUser(tags, userId) {
-    if (!tags) {
-      return Promise.resolve(true);
-    }
-    if (tags && !Array.isArray(tags)) {
-      const err = new Error('The `tags` property must be an array');
-      err.status = 400;
-      return Promise.reject(err);
-    }
-    //if(tags && Array.isArray(tags)) {
-    //  tags.forEach(tag => {
-    //    if (!mongoose.Types.ObjectId.isValid(tag)) {
-    //      const err = new Error('Not a valid `id`');
-    //      err.status = 400;
-    //      return Promise.reject(err);
-    //    }
-    //  });
-    //}
-    if(tags && Array.isArray(tags)) {
-      for (let index in tags) {
-        if (!mongoose.Types.ObjectId.isValid(tags[index])) {
-          const err = new Error('Not a valid `id`');
-          err.status = 400;
-          return Promise.reject(err);
-        }
-      }
-    }
-    return Tag.find({$and: [{_id: {$in:tags}, userId}]})
-      .then( result => {
-        if(result.length !== tags.length) {
-          const err = new Error('One or more tags are invalid');
-          err.status = 400;
-          return Promise.reject(err);
-        } else {
-          return Promise.resolve(true);
-        }
-      });
+  if(mongoose.Types.ObjectId.isValid(folderId)) {
+    toUpdate.folderId = folderId;
   }
 
-  if (!toUpdate.title) {
-    const message = new Error('Missing `title` in request body');
-    message.status = 400;
-    return next(message);
-  }
+
 
   Promise.all([
     folderIdBelongsToUser(toUpdate.folderId, userId),
@@ -281,17 +220,6 @@ router.put('/:id', (req, res, next) => {
       res.status(201).json(result);
     })
     .catch(err => next(err));
-
-  //  Note.findByIdAndUpdate(id, toUpdate, {new: true})
-  //    .then(result => {
-  //      if(result) {
-  //        res.json(result);
-  //      } else {
-  //        next();
-  //      }
-  //    })
-  //    .catch(err => next(err));
-
 });
 
 /* ========== DELETE/REMOVE A SINGLE ITEM ========== */
