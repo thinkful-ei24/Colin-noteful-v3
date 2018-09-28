@@ -286,27 +286,27 @@ describe('Notes API resource', function () {
         });
     });
 
-    it('should return a status 400 and an error when `id` is not valid', function() {
-
-      const updateNote = {'content': 'good content'};
-
-      let res;
-      return Note.findOne({userId: user.id})
-        .then(_res => {
-          res = _res;
-          return chai.request(app)
-            .put(`/api/notes/${res.id}`)
-            .set('Authorization', `Bearer ${token}`)
-            .send(updateNote);
-        })
-        .then(data => {
-          expect(data).to.have.status(400);
-          expect(data).to.be.json;
-          expect(data.body).to.be.an('object');
-          expect(data.body.message).to.equal('Missing `title` in request body');
-        });
-
-    });
+    //    it('should return a status 400 and an error when `id` is not valid', function() {
+    //
+    //      const updateNote = {'content': 'good content'};
+    //
+    //      let res;
+    //      return Note.findOne({userId: user.id})
+    //        .then(_res => {
+    //          res = _res;
+    //          return chai.request(app)
+    //            .put(`/api/notes/${res.id}`)
+    //            .set('Authorization', `Bearer ${token}`)
+    //            .send(updateNote);
+    //        })
+    //        .then(data => {
+    //          expect(data).to.have.status(400);
+    //          expect(data).to.be.json;
+    //          expect(data.body).to.be.an('object');
+    //          expect(data.body.message).to.equal('Missing `title` in request body');
+    //        });
+    //
+    //    });
   });
 
   describe('DELETE an item', function () {
