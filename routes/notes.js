@@ -95,9 +95,6 @@ router.post('/', (req, res, next) => {
     }
     return Folder.findOne({_id: folderId, userId})
       .then(result => {
-        console.log('result is', result);
-        console.log(folderId);
-        console.log(userId);
         if(result) {
           return Promise.resolve(true);
         } else {
@@ -117,15 +114,27 @@ router.post('/', (req, res, next) => {
       err.status = 400;
       return Promise.reject(err);
     }
+    //if(tags && Array.isArray(tags)) {
+    //  console.log(tags);
+    //  tags.forEach(tag => {
+    //    console.log(tag);
+    //    if (!mongoose.Types.ObjectId.isValid(tag)) {
+    //      const err = new Error('Not a valid `id`');
+    //      err.status = 400;
+    //      return Promise.reject(err);
+    //    }
+    //  });
+    //}
     if(tags && Array.isArray(tags)) {
-      tags.forEach(tag => {
-        if (!mongoose.Types.ObjectId.isValid(tag)) {
+      for (let index in tags) {
+        if (!mongoose.Types.ObjectId.isValid(tags[index])) {
           const err = new Error('Not a valid `id`');
           err.status = 400;
           return Promise.reject(err);
         }
-      });
+      }
     }
+
     return Tag.find({$and: [{_id: {$in:tags}, userId}]})
       .then( result => {
         if(result.length !== tags.length) {
@@ -137,8 +146,6 @@ router.post('/', (req, res, next) => {
         }
       });
   }
-
-  folderId = folderId === '' ? null : folderId;
 
   const newItem = {
     title: title,
@@ -156,7 +163,6 @@ router.post('/', (req, res, next) => {
       return Note.create(newItem);
     })
     .then( result => {
-      console.log(result);
       res.location(`${req.originalUrl}/${result.id}`).status(201).json(result);
     })
     .catch(err => {
@@ -174,11 +180,14 @@ router.put('/:id', (req, res, next) => {
   const userId = req.user.id;
   const toUpdate = {userId: userId};
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    const err = new Error('Not a valid `id`');
-    err.status = 404;
-    return next(err);
-  }
+
+
+
+  //if (!mongoose.Types.ObjectId.isValid(id)) {
+  //  const err = new Error('Not a valid `id`');
+  //  err.status = 404;
+  //  return next(err);
+  //}
 
   updateFields.forEach(field => {
     if (field in req.body) {
@@ -186,19 +195,73 @@ router.put('/:id', (req, res, next) => {
     }
   });
 
-  if(toUpdate.tags !== undefined) {
-    toUpdate.tags.forEach(tag => {
-      if (!mongoose.Types.ObjectId.isValid(tag)) {
-        const err = new Error('Not a valid `id`');
-        err.status = 400;
-        return next(err);
-      }
-    });
+  //if(toUpdate.tags !== undefined) {
+  //  toUpdate.tags.forEach(tag => {
+  //    if (!mongoose.Types.ObjectId.isValid(tag.id)) {
+  //      const err = new Error('Not a valid `id`');
+  //      err.status = 400;
+  //      return next(err);
+  //    }
+  //  });
+  //}
+  function folderIdBelongsToUser(folderId, userId) {
+    if (!folderId) {
+      return Promise.resolve(true);
+    }
+    if(!mongoose.Types.ObjectId.isValid(folderId)) {
+      const err = new Error('The folderId is not valid');
+      err.status = 400;
+      return Promise.reject(err);
+    }
+    return Folder.findOne({_id: folderId, userId})
+      .then(result => {
+        if(result) {
+          return Promise.resolve(true);
+        } else {
+          const err = new Error('the folder does not exist');
+          err.status = 400;
+          return Promise.reject(err);
+        }
+      });
   }
 
-  if(toUpdate.folderId === '') {
-    delete toUpdate.folderId;
-    toUpdate.$unset = {folderId: 1};
+  function tagsBelongToUser(tags, userId) {
+    if (!tags) {
+      return Promise.resolve(true);
+    }
+    if (tags && !Array.isArray(tags)) {
+      const err = new Error('The `tags` property must be an array');
+      err.status = 400;
+      return Promise.reject(err);
+    }
+    //if(tags && Array.isArray(tags)) {
+    //  tags.forEach(tag => {
+    //    if (!mongoose.Types.ObjectId.isValid(tag)) {
+    //      const err = new Error('Not a valid `id`');
+    //      err.status = 400;
+    //      return Promise.reject(err);
+    //    }
+    //  });
+    //}
+    if(tags && Array.isArray(tags)) {
+      for (let index in tags) {
+        if (!mongoose.Types.ObjectId.isValid(tags[index])) {
+          const err = new Error('Not a valid `id`');
+          err.status = 400;
+          return Promise.reject(err);
+        }
+      }
+    }
+    return Tag.find({$and: [{_id: {$in:tags}, userId}]})
+      .then( result => {
+        if(result.length !== tags.length) {
+          const err = new Error('One or more tags are invalid');
+          err.status = 400;
+          return Promise.reject(err);
+        } else {
+          return Promise.resolve(true);
+        }
+      });
   }
 
   if (!toUpdate.title) {
@@ -207,15 +270,27 @@ router.put('/:id', (req, res, next) => {
     return next(message);
   }
 
-  Note.findByIdAndUpdate(id, toUpdate, {new: true})
+  Promise.all([
+    folderIdBelongsToUser(toUpdate.folderId, userId),
+    tagsBelongToUser(toUpdate.tags, userId)
+  ])
+    .then(() => {
+      return Note.findByIdAndUpdate(id, toUpdate, {new: true});
+    })
     .then(result => {
-      if(result) {
-        res.json(result);
-      } else {
-        next();
-      }
+      res.status(201).json(result);
     })
     .catch(err => next(err));
+
+  //  Note.findByIdAndUpdate(id, toUpdate, {new: true})
+  //    .then(result => {
+  //      if(result) {
+  //        res.json(result);
+  //      } else {
+  //        next();
+  //      }
+  //    })
+  //    .catch(err => next(err));
 
 });
 
