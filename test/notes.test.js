@@ -2,24 +2,29 @@
 
 const chai = require('chai');
 const chaiHttp = require('chai-http');
+const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 
 const app = require('../server.js');
-const { TEST_MONGODB_URI } = require('../config.js');
+const { TEST_MONGODB_URI, JWT_SECRET } = require('../config.js');
 
 const Note = require('../models/note.js');
+const User = require('../models/user.js');
 const Folder = require('../models/folder.js');
 const Tag = require('../models/tags.js');
 
 //const seedNotes = require('../db/seed/notes.js');
 //const folders = require('../db/seed/folders.js');
 //const tags = require('../db/seed/folders.js');
-const {notes, folders, tags} = require('../db/data.js');
+const {notes, folders, tags, users} = require('../db/data.js');
 
 const expect = chai.expect;
 chai.use(chaiHttp);
 
 describe('Notes API resource', function () {
+
+  let token;
+  let user;
 
   before(function () {
     return mongoose.connect(TEST_MONGODB_URI)
@@ -28,12 +33,17 @@ describe('Notes API resource', function () {
 
   beforeEach(function () {
     return Promise.all([
+      User.insertMany(users),
       Note.insertMany(notes),
       Folder.insertMany(folders),
       Folder.createIndexes(),
       Tag.insertMany(tags),
       Tag.createIndexes()
-    ]);
+    ])
+      .then(([users]) => {
+        user = users[0];
+        token = jwt.sign({ user }, JWT_SECRET, { subject: user.username });
+      });
 
   });
 
@@ -51,16 +61,18 @@ describe('Notes API resource', function () {
 
     it('should return correct fields in notes', function () {
       let note;
-      return Note.findOne()
+      return Note.findOne({ userId: user.id })
         .then(foundNote => {
           note = foundNote;
-          return chai.request(app).get(`/api/notes/${note.id}`);
+          return chai.request(app)
+            .get(`/api/notes/${note.id}`)
+            .set('Authorization', `Bearer ${token}`);
         })
         .then((res) => {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
           expect(res.body).to.be.an('object');
-          expect(res.body).to.have.keys('id', 'title', 'content', 'createdAt', 'updatedAt', 'tags', 'folderId');
+          expect(res.body).to.have.keys('id', 'userId', 'title', 'content', 'createdAt', 'updatedAt', 'tags');
 
           expect(res.body.id).to.equal(note.id);
           expect(res.body.title).to.equal(note.title);
@@ -73,6 +85,7 @@ describe('Notes API resource', function () {
 
       return chai.request(app)
         .get('/api/notes/itsanID')
+        .set('Authorization', `Bearer ${token}`)
         .then(res => {
           expect(res).to.have.status(400);
         });
@@ -83,8 +96,10 @@ describe('Notes API resource', function () {
   describe('GET /api/notes', function () {
     it('should return the correct number of Notes', function () {
       return Promise.all([
-        Note.find(),
-        chai.request(app).get('/api/notes')
+        Note.find({userId: user.id}),
+        chai.request(app)
+          .get('/api/notes')
+          .set('Authorization', `Bearer ${token}`)
       ])
         .then(([data, res]) => {
           expect(res).to.have.status(200);
@@ -96,9 +111,10 @@ describe('Notes API resource', function () {
 
     it('should return a list of notes where the notes have the correct fields', function () {
       return Promise.all([
-        Note.find(),
+        Note.find({userId: user.id}),
         chai.request(app)
           .get('/api/notes')
+          .set('Authorization', `Bearer ${token}`)
       ])
         .then(([data, res]) => {
           expect(res.body).to.be.an('array');
@@ -108,7 +124,7 @@ describe('Notes API resource', function () {
           res.body.forEach(function (item, i) {
             expect(item).to.be.a('object');
             // Note: folderId and content are optional
-            expect(item).to.include.all.keys('id', 'title', 'createdAt', 'updatedAt', 'tags');
+            expect(item).to.include.all.keys('id', 'userId', 'title', 'createdAt', 'updatedAt', 'tags');
             expect(item.id).to.equal(data[i].id);
             expect(item.title).to.equal(data[i].title);
             expect(item.content).to.equal(data[i].content);
@@ -123,16 +139,17 @@ describe('Notes API resource', function () {
       const searchTerm = 'cats';
       const regex = new RegExp(searchTerm, 'gi');
 
-      const dbPromise = Note.find({$or: [{'title': regex}, {'content': regex}]});
+      const dbPromise = Note.find({$and: [{userId: user.id}, {$or: [{'title': regex}, {'content': regex}]}]});
       const apiPromise = chai.request(app)
-        .get(`/api/notes?searchTerm=${searchTerm}`);
+        .get(`/api/notes?searchTerm=${searchTerm}`)
+        .set('Authorization', `Bearer ${token}`);
 
       return Promise.all([dbPromise, apiPromise])
         .then(([db, res]) => {
           expect(res).to.have.status(200);
           expect(res).to.be.json;
           expect(res.body).to.be.an('array');
-          expect(res.body).to.have.length(8);
+          expect(res.body).to.have.length(db.length);
           res.body.forEach((item, i) => {
             expect(item).to.be.an('object');
             expect(item).to.include.keys('title', 'content', 'tags', 'createdAt', 'updatedAt');
@@ -148,12 +165,14 @@ describe('Notes API resource', function () {
     it('should return correct search results for a folderId query', function () {
 
       let folder;
-      return Folder.findOne()
+      return Folder.findOne( {userId: user.id} )
         .then(data => {
           folder = data;
           return Promise.all([
-            Note.find({ folderId: folder.id  }),
-            chai.request(app).get(`/api/notes?folderId=${folder.id}`)
+            Note.find({ folderId: folder.id, userId: user.id }),
+            chai.request(app)
+              .get(`/api/notes?folderId=${folder.id}`)
+              .set('Authorization', `Bearer ${token}`)
           ]);
         })
         .then(([data, res]) => {
@@ -178,6 +197,7 @@ describe('Notes API resource', function () {
 
       return chai.request(app)
         .post('/api/notes')
+        .set('Authorization', `Bearer ${token}`)
         .send(newNote)
         .then(function (_res) {
           res = _res;
@@ -185,7 +205,7 @@ describe('Notes API resource', function () {
           expect(res).to.have.header('location');
           expect(res).to.be.json;
           expect(res.body).to.be.an('object');
-          expect(res.body).to.have.keys('id', 'title', 'content', 'updatedAt', 'createdAt', 'tags');
+          expect(res.body).to.have.keys('id', 'userId', 'title', 'content', 'updatedAt', 'createdAt', 'tags');
           return Note.findById(res.body.id);
         })
         .then(function(note) {
@@ -203,6 +223,7 @@ describe('Notes API resource', function () {
 
       return chai.request(app)
         .post('/api/notes')
+        .set('Authorization', `Bearer ${token}`)
         .send(newNote)
         .then(function (_res) {
           res = _res;
@@ -220,19 +241,20 @@ describe('Notes API resource', function () {
       let og_id;
 
       return Note
-        .findOne()
+        .findOne({userId: user.id})
         .then(foundNote => {
           og_id = foundNote.id;
           return chai.request(app)
             .put(`/api/notes/${og_id}`)
+            .set('Authorization', `Bearer ${token}`)
             .send(updateNote);
         })
         .then(_res => {
           res = _res;
           expect(res).to.be.json;
-          expect(res).to.have.status(200);
+          expect(res).to.have.status(201);
           expect(res.body).to.be.an('object');
-          expect(res.body).to.have.keys('id', 'title', 'content', 'createdAt', 'updatedAt', 'folderId', 'tags');
+          expect(res.body).to.have.keys('id', 'title', 'userId', 'content', 'createdAt', 'updatedAt', 'tags');
           expect(res.body.title).to.equal(updateNote.title);
           expect(res.body.content).to.equal(updateNote.content);
           return Note.findById(res.body.id);
@@ -251,11 +273,12 @@ describe('Notes API resource', function () {
 
     it('status 404 when an item is updated with invalid data', function () {
 
-      const updateNote = {'title': 'sdfsdfsdf', 'content': 'content without a title'};
+      const updateNote = {'title': 'sdfsdfsdf', 'content': 'content '};
       let res;
 
       return chai.request(app)
         .put('/api/notes/BADPATH')
+        .set('Authorization', `Bearer ${token}`)
         .send(updateNote)
         .then(function (_res) {
           res = _res;
@@ -265,14 +288,15 @@ describe('Notes API resource', function () {
 
     it('should return a status 400 and an error when `id` is not valid', function() {
 
-      const updateNote = {'content': 'good content' };
+      const updateNote = {'content': 'good content'};
 
       let res;
-      return Note.findOne()
+      return Note.findOne({userId: user.id})
         .then(_res => {
           res = _res;
           return chai.request(app)
             .put(`/api/notes/${res.id}`)
+            .set('Authorization', `Bearer ${token}`)
             .send(updateNote);
         })
         .then(data => {
@@ -287,10 +311,11 @@ describe('Notes API resource', function () {
 
   describe('DELETE an item', function () {
     it('successfully removes an item from the database', function () {
-      return Note.findOne()
+      return Note.findOne({userId: user.id})
         .then(res => {
           return chai.request(app)
-            .delete(`/api/notes/${res.id}`);
+            .delete(`/api/notes/${res.id}`)
+            .set('Authorization', `Bearer ${token}`);
         })
         .then((res) => {
           expect(res).to.have.status(204);

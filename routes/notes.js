@@ -183,11 +183,11 @@ router.put('/:id', (req, res, next) => {
 
 
 
-  //if (!mongoose.Types.ObjectId.isValid(id)) {
-  //  const err = new Error('Not a valid `id`');
-  //  err.status = 404;
-  //  return next(err);
-  //}
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const err = new Error('Not a valid `id`');
+    err.status = 404;
+    return next(err);
+  }
 
   updateFields.forEach(field => {
     if (field in req.body) {
